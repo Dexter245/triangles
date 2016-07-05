@@ -12,7 +12,7 @@ import java.util.List;
 
 public class Triangles extends ApplicationAdapter {
 
-    private static final int MAX_DEPTH = 7;
+    private static final int MAX_DEPTH = 4;
 
     private Camera camera;
     private ShapeRenderer renderer;
