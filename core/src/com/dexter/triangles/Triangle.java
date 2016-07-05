@@ -1,69 +1,58 @@
 package com.dexter.triangles;
 
-import java.util.logging.XMLFormatter;
+import com.badlogic.gdx.math.Vector2;
 
 public class Triangle {
 
-    private Point pointLeft;
-    private Point pointRight;
-    private Point pointOther;
-    private Point pointCenter;
+    private Vector2 pointLeft;
+    private Vector2 pointRight;
+    private Vector2 pointBottom;
+    private Vector2 pointCenter;
 
-    private TrianglePosition trianglePosition;
-    private Orientation orientation;
     private Triangle triangleParent;
     private Triangle triangleLeft;
     private Triangle triangleRight;
-    private Triangle triangleMiddle;
-    private Triangle triangleOther;
+    private Triangle triangleUp;
 
-    public Triangle(TrianglePosition trianglePosition, Triangle triangleParent, Point pointLeft, Point pointRight, Point pointOther){
-        this(pointLeft, pointRight, pointOther);
+    public Triangle(Triangle triangleParent, Vector2 pointLeft, Vector2 pointRight, Vector2 pointBottom){
+        this(pointLeft, pointRight, pointBottom);
         this.triangleParent = triangleParent;
-        this.trianglePosition = trianglePosition;
     }
 
-    public Triangle(Point pointLeft, Point pointRight, Point pointOther){
+    public Triangle(float leftX, float leftY, float rightX, float rightY, float bottomX, float bottomY){
+        this(new Vector2(leftX, leftY), new Vector2(rightX, rightY), new Vector2(bottomX, bottomY));
+    }
+
+    public Triangle(Vector2 pointLeft, Vector2 pointRight, Vector2 pointBottom){
         this.pointLeft = pointLeft;
         this.pointRight = pointRight;
-        this.pointOther = pointOther;
-        pointCenter = new Point( (pointLeft.getX()+pointRight.getX()+pointOther.getX()) / 3f,
-                (pointLeft.getY()+pointRight.getY()+pointOther.getY()) / 3f);
+        this.pointBottom = pointBottom;
+        this.pointCenter = new Vector2( (pointLeft.x+pointRight.x+pointBottom.x) / 3f,
+                (pointLeft.y+pointRight.y+pointBottom.y) / 3f);
     }
 
-    public Triangle(float leftX, float leftY, float rightX, float rightY, float otherX, float otherY){
-        pointLeft = new Point(leftX, leftY);
-        pointRight = new Point(rightX, rightY);
-        pointOther = new Point(otherX, otherY);
-        pointCenter = new Point( (pointLeft.getX()+pointRight.getX()+pointOther.getX()) / 3f,
-                (pointLeft.getY()+pointRight.getY()+pointOther.getY()) / 3f);
-    }
+    public void calculateSurroundingTriangles(){
 
-    public void calculateInnerTriangles(){
+        //left
+        Vector2 v = pointLeft.cpy().add(pointBottom).scl(0.5f);
+        Vector2 diff = pointRight.cpy().sub(v);
+        Vector2 v2 = v.cpy().sub(diff);
+        triangleLeft = new Triangle(this, pointLeft.cpy().add(v2).scl(0.5f),
+                v, pointBottom.cpy().add(v2).scl(0.5f));
 
-        Point p1 = new Point(pointLeft);
-        Point p2 = new Point(pointLeft.getAverageTo(pointRight));
-        Point p3 = new Point(pointRight);
-        Point p4 = new Point(pointRight.getAverageTo(pointOther));
-        Point p5 = new Point(pointOther);
-        Point p6 = new Point(pointOther.getAverageTo(pointLeft));
+        //right
+        v = pointBottom.cpy().add(pointRight).scl(0.5f);
+        diff = pointLeft.cpy().sub(v);
+        v2 = v.cpy().sub(diff);
+        triangleRight = new Triangle(this, v,
+                pointRight.cpy().add(v2).scl(0.5f), pointBottom.cpy().add(v2).scl(0.5f));
 
-        triangleLeft = new Triangle(TrianglePosition.LEFT, this, p1, p2, p6);
-        triangleRight = new Triangle(TrianglePosition.RIGHT, this, p2, p3, p4);
-        triangleOther = new Triangle(TrianglePosition.OTHER, this, p6, p4, p5);
-        triangleMiddle = new Triangle(TrianglePosition.MIDDLE, this, p6, p4, p2);
-
-        if(orientation == Orientation.UP){
-            triangleLeft.setOrientation(Orientation.UP);
-            triangleRight.setOrientation(Orientation.UP);
-            triangleOther.setOrientation(Orientation.UP);
-            triangleMiddle.setOrientation(Orientation.DOWN);
-        } else{
-            triangleLeft.setOrientation(Orientation.DOWN);
-            triangleRight.setOrientation(Orientation.DOWN);
-            triangleOther.setOrientation(Orientation.DOWN);
-            triangleMiddle.setOrientation(Orientation.UP);
-        }
+        //up
+        v = pointLeft.cpy().add(pointRight).scl(0.5f);
+        diff = pointBottom.cpy().sub(v);
+        v2 = v.cpy().sub(diff);
+        triangleUp = new Triangle(this, pointLeft.cpy().add(v2).scl(0.5f),
+                pointRight.cpy().add(v2).scl(0.5f), v);
 
     }
 
@@ -75,99 +64,47 @@ public class Triangle {
     }
 
     public boolean hasChildren(){
-        if(triangleLeft != null && triangleRight != null && triangleOther != null && triangleMiddle != null)
+        if(triangleLeft != null && triangleRight != null && triangleUp != null)
             return true;
         else
             return false;
     }
 
-    public Point getPointCenter() {
+    public Vector2 getPointLeft() {
+        return pointLeft;
+    }
+
+    public Vector2 getPointRight() {
+        return pointRight;
+    }
+
+    public Vector2 getPointBottom() {
+        return pointBottom;
+    }
+
+    public Vector2 getPointCenter() {
         return pointCenter;
-    }
-
-    public TrianglePosition getTrianglePosition() {
-        return trianglePosition;
-    }
-
-    public void setTrianglePosition(TrianglePosition trianglePosition) {
-        this.trianglePosition = trianglePosition;
-    }
-
-    public Orientation getOrientation() {
-        return orientation;
-    }
-
-    public void setOrientation(Orientation orientation) {
-        this.orientation = orientation;
-    }
-
-    public Triangle getTriangleMiddle() {
-        return triangleMiddle;
-    }
-
-    public void setTriangleMiddle(Triangle triangleMiddle) {
-        this.triangleMiddle = triangleMiddle;
     }
 
     public Triangle getTriangleParent() {
         return triangleParent;
     }
 
-    public void setTriangleParent(Triangle triangleParent) {
-        this.triangleParent = triangleParent;
-    }
-
     public Triangle getTriangleLeft() {
         return triangleLeft;
-    }
-
-    public void setTriangleLeft(Triangle triangleLeft) {
-        this.triangleLeft = triangleLeft;
     }
 
     public Triangle getTriangleRight() {
         return triangleRight;
     }
 
-    public void setTriangleRight(Triangle triangleRight) {
-        this.triangleRight = triangleRight;
-    }
-
-    public Triangle getTriangleOther() {
-        return triangleOther;
-    }
-
-    public void setTriangleOther(Triangle triangleOther) {
-        this.triangleOther = triangleOther;
-    }
-
-    public Point getPointLeft() {
-        return pointLeft;
-    }
-
-    public void setPointLeft(Point pointLeft) {
-        this.pointLeft = pointLeft;
-    }
-
-    public Point getPointRight() {
-        return pointRight;
-    }
-
-    public void setPointRight(Point pointRight) {
-        this.pointRight = pointRight;
-    }
-
-    public Point getPointOther() {
-        return pointOther;
-    }
-
-    public void setPointOther(Point pointOther) {
-        this.pointOther = pointOther;
+    public Triangle getTriangleUp() {
+        return triangleUp;
     }
 
     @Override
     public String toString() {
-        return "pointLeft: " + pointLeft + ", pointRight: " + pointRight + ", pointOther: " + pointOther;
+        return "pointLeft: " + pointLeft + ", pointRight: " + pointRight + ", pointBottom: " + pointBottom;
     }
 
 }
