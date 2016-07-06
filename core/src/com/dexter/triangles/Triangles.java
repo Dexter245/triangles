@@ -35,6 +35,11 @@ public class Triangles extends ApplicationAdapter {
     private float areaWidth = 1.0f;
     private float areaHeight = 1.0f;
 
+    private int counter = 0;
+    private int triangleCounter = 0;
+    private float updateTime = 0f;
+    private float renderTime = 0f;
+
 	@Override
 	public void create () {
         camera = new OrthographicCamera(800, 600);
@@ -54,6 +59,8 @@ public class Triangles extends ApplicationAdapter {
 
     private void update(float delta){
 
+        long timeStart = System.currentTimeMillis();
+
         //translate
         float dx = 0f;
         float dy = 0f;
@@ -72,6 +79,7 @@ public class Triangles extends ApplicationAdapter {
         if(dx != 0f || dy != 0f){
             outerTriangle.move(dx, dy);
             baseTriangle.move(dx, dy);
+            triangleCounter = 0;
             calcTriangles(baseTriangle, MAX_DEPTH);
             calcOuterTriangleChildren();
         }
@@ -93,6 +101,7 @@ public class Triangles extends ApplicationAdapter {
             scale *= -1f;
             outerTriangle.move(scale*f, scale*f);
             baseTriangle.move(scale*f, scale*f);
+            triangleCounter = 0;
             calcTriangles(baseTriangle, MAX_DEPTH);
             calcOuterTriangleChildren();
         }
@@ -105,6 +114,7 @@ public class Triangles extends ApplicationAdapter {
         }
 //        isOuterTooBig();
 
+        updateTime = System.currentTimeMillis() - timeStart;
 
     }
 
@@ -112,6 +122,8 @@ public class Triangles extends ApplicationAdapter {
 	public void render () {
 
         update(Gdx.graphics.getDeltaTime());
+
+        long timeStart = System.currentTimeMillis();
 
 //		Gdx.gl.glClearColor(1, 1, 1, 1);
         Gdx.gl.glClearColor(0, 0, 0, 0);
@@ -135,6 +147,14 @@ public class Triangles extends ApplicationAdapter {
 
         renderer.end();
 
+        renderTime = System.currentTimeMillis() - timeStart;
+
+        counter++;
+        if(counter >= 60){
+            counter = 0;
+            System.out.println("fps: " + Gdx.graphics.getFramesPerSecond() + ", updateTime: " + updateTime +
+                ", renderTime: " + renderTime + ", numTriangles: " + triangleCounter);
+        }
 
 
         //debug only
@@ -176,20 +196,6 @@ public class Triangles extends ApplicationAdapter {
             System.out.println("ERROR in switchToBiggerOuter: every point of rectangle is inside triangle");
             return;
         }
-
-//        Vector2 left = outerTriangle.getPointLeft();
-//        Vector2 right = outerTriangle.getPointRight();
-//        Vector2 top = outerTriangle.getPointBottom();
-//
-//        Vector2 newLeft = left.cpy();
-//        Vector2 diff = right.cpy().sub(left).scl(1.5f);
-//        newLeft.sub(diff).sub(0f, top.y-left.y);
-//
-//        Vector2 newRight = right.cpy();
-//        diff = left.cpy().sub(right).scl(1.5f);
-//        newRight.sub(diff).sub(0f, top.y-left.y);
-//
-//        Vector2 newTop = top.cpy().add(0f, 2f*(top.y-left.y));
 
         outerTriangle = new Triangle(newLeft, newRight, newTop);
         calcBaseFromOuter();
@@ -268,8 +274,7 @@ public class Triangles extends ApplicationAdapter {
     }
 
     private void calcTriangles(Triangle t, int steps){
-//        if(steps == 0)
-//            return;
+        triangleCounter++;
         if(t.getPointLeft().dst(t.getPointRight()) < 2*MIN_LENGTH)
             return;
         t.calculateSurroundingTriangles();
