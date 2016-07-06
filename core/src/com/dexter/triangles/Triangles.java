@@ -7,6 +7,7 @@ import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.math.Intersector;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 
 public class Triangles extends ApplicationAdapter {
@@ -15,9 +16,6 @@ public class Triangles extends ApplicationAdapter {
     private static final float MIN_LENGTH = 0.01f;
     private static final float MOVE_SPEED = 0.3f;//per second
     private static final float SCALE_SPEED = 0.3f;
-
-    private static final float TRIANGLE_LENGTH = 1.0f;
-    private static final float TRIANGLE_HEIGHT = 0.866f;
 
     private Camera camera;
     private ShapeRenderer renderer;
@@ -28,14 +26,14 @@ public class Triangles extends ApplicationAdapter {
     private Triangle outerTriangleTopChild;
     private Triangle baseTriangle;
 
+    private Color triangleColor = new Color(0.0f, 0.8f, 0.8f, 1.0f);
+
     private float scaleFactor = 1.0f;
     private float aspectRatio = 1.0f;
     private float screenWidth = 100f;
     private float screenHeight = 100f;
     private float areaWidth = 1.0f;
     private float areaHeight = 1.0f;
-//    private int renderAreaWidth = 600;
-//    private int renderAreaHeight = 600;
 
 	@Override
 	public void create () {
@@ -140,12 +138,10 @@ public class Triangles extends ApplicationAdapter {
 
 
         //debug only
-        renderer.begin(ShapeRenderer.ShapeType.Line);
-        renderer.setColor(Color.WHITE);
-
-        renderer.rect(50f, 50f, screenWidth-100, screenHeight-100);
-
-        renderer.end();
+//        renderer.begin(ShapeRenderer.ShapeType.Line);
+//        renderer.setColor(Color.WHITE);
+//        renderer.rect(50f, 50f, screenWidth-100, screenHeight-100);
+//        renderer.end();
 
 
 	}
@@ -300,25 +296,16 @@ public class Triangles extends ApplicationAdapter {
 
     private void renderTriangles(Triangle t){
 
-        float maxDistance = outerTriangle.getPointLeft().dst(outerTriangle.getPointRight());
-
-        float red = 1f - outerTriangle.getPointLeft().dst(t.getPointCenter()) / maxDistance;
-        float green = 1f - outerTriangle.getPointRight().dst(t.getPointCenter()) / maxDistance;
-        float blue = 1f - outerTriangle.getPointBottom().dst(t.getPointCenter()) / maxDistance;
-        Color c = new Color(red, green, blue, 1.0f);
-//        renderTriangle(t, c);
-        renderTriangle(t, Color.RED);
+        float length = t.getPointLeft().dst(t.getPointRight());
+        float alpha = length*20;
+        alpha = MathUtils.clamp(alpha, 0f, 1f);
+        triangleColor.a = alpha;
+        renderTriangle(t, triangleColor);
 
         if(t.hasChildren()){
-//            renderTriangles(t.getTriangleLeft(), steps-1, COLOR_TRIANGLE_LEFT);
-//            renderTriangles(t.getTriangleRight(), steps-1, COLOR_TRIANGLE_RIGHT);
-//            renderTriangles(t.getTriangleUp(), steps-1, COLOR_TRIANGLE_OTHER);
-//            renderTriangles(t.getTriangleMiddle(), steps-1, COLOR_TRIANGLE_MIDDLE);
-
             renderTriangles(t.getTriangleLeft());
             renderTriangles(t.getTriangleRight());
             renderTriangles(t.getTriangleUp());
-
         }
     }
 
@@ -330,8 +317,8 @@ public class Triangles extends ApplicationAdapter {
         renderer.setColor(color);
         renderer.triangle(pl.x, pl.y, pr.x, pr.y, pb.x, pb.y);
 
-//        Color colorOutline = color.cpy();
-//        colorOutline.a = 1.0f;
+//        Color colorOutline = Color.WHITE;
+//        colorOutline.a = 0.25f;
 //        renderTriangleOutline(t, colorOutline);
     }
 
