@@ -2,9 +2,13 @@ package com.dexter.triangles;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.*;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
+import com.badlogic.gdx.math.Intersector;
+import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
 import java.util.ArrayList;
@@ -13,14 +17,21 @@ import java.util.List;
 public class Triangles extends ApplicationAdapter {
 
     private static final int MAX_DEPTH = 4;
+    private static final float MOVE_SPEED = 0.3f;//per second
+    private static final float SCALE_SPEED = 0.3f;
 
     private Camera camera;
     private ShapeRenderer renderer;
 
     private Triangle outerTriangle;
+    private Triangle outerTriangleLeftChild;
+    private Triangle outerTriangleRightChild;
+    private Triangle outerTriangleTopChild;
     private Triangle baseTriangle;
 
     private float scaleFactor = 1.0f;
+//    private int renderAreaWidth = 600;
+//    private int renderAreaHeight = 600;
 
 	@Override
 	public void create () {
@@ -29,23 +40,73 @@ public class Triangles extends ApplicationAdapter {
         renderer.setProjectionMatrix(camera.combined);
 
         outerTriangle = new Triangle(0f, 0f, 1f, 0f, 0.5f, 0.866f);
-        baseTriangle = new Triangle(0.25f, 0.866f*0.5f, 0.75f, 0.866f*0.5f, 0.5f, 0f);
+        calcBaseFromOuter();
+//        baseTriangle = new Triangle(0.25f, 0.866f*0.5f, 0.75f, 0.866f*0.5f, 0.5f, 0f);
 
-//        baseTriangle.calculateSurroundingTriangles();
         calcTriangles(baseTriangle, MAX_DEPTH);
-//        calcTrianglesIterative(baseTriangle, MAX_DEPTH);
-
-
-//        Triangle inner1 = calcInnerTriangle(baseTriangle);
-//        System.out.println("base: " + baseTriangle);
-//        System.out.println("inner1: " + inner1);
-
+        calcOuterTriangleChildren();
 
 
 	}
 
+    private void update(float delta){
+
+        //translate
+        float dx = 0f;
+        float dy = 0f;
+        if(Gdx.input.isKeyPressed(Input.Keys.W)){
+            dy = -MOVE_SPEED*delta;
+        } else if(Gdx.input.isKeyPressed(Input.Keys.S)){
+            dy = MOVE_SPEED*delta;
+        }
+
+        if(Gdx.input.isKeyPressed(Input.Keys.A)){
+            dx = MOVE_SPEED*delta;
+        } else if(Gdx.input.isKeyPressed(Input.Keys.D)){
+            dx = -MOVE_SPEED*delta;
+        }
+
+        if(dx != 0f || dy != 0f){
+            outerTriangle.move(dx, dy);
+            baseTriangle.move(dx, dy);
+            calcTriangles(baseTriangle, MAX_DEPTH);
+            calcOuterTriangleChildren();
+        }
+
+        //scale
+        float scale = 1f;
+        if(Gdx.input.isKeyPressed(Input.Keys.UP)){
+            scale += SCALE_SPEED*delta;
+        } else if(Gdx.input.isKeyPressed(Input.Keys.DOWN)){
+            scale -= SCALE_SPEED*delta;
+        }
+
+        if(scale != 1f){
+            outerTriangle.scale(scale);
+            baseTriangle.scale(scale);
+            calcTriangles(baseTriangle, MAX_DEPTH);
+            calcOuterTriangleChildren();
+        }
+
+//        System.out.println("outerTooSmall: " + isOuterTooSmall() + ", tooBig: " + isOuterTooBig());
+        if(isOuterTooBig()){
+            System.out.println("OuterTriangle is too big!");
+            switchToSmallerOuter();
+        }
+        if(isOuterTooSmall()){
+            System.out.println("OuterTriangle is too small");
+            switchToBiggerOuter();
+        }
+//        isOuterTooBig();
+
+
+    }
+
 	@Override
 	public void render () {
+
+        update(Gdx.graphics.getDeltaTime());
+
 //		Gdx.gl.glClearColor(1, 1, 1, 1);
         Gdx.gl.glClearColor(0, 0, 0, 0);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -58,16 +119,122 @@ public class Triangles extends ApplicationAdapter {
 //        renderer.begin(ShapeRenderer.ShapeType.Line);
         renderer.begin(ShapeRenderer.ShapeType.Filled);
         renderer.setColor(Color.WHITE);
+//        renderer.rect(0f, 0f, scaleFactor, scaleFactor);
 
-        renderTriangleOutline(outerTriangle, Color.WHITE);
+        renderTriangleOutline(outerTriangle, Color.BLACK);
 
         renderTriangles(baseTriangle);
+
 
 
         renderer.end();
 
 
+
+        //debug only
+        renderer.begin(ShapeRenderer.ShapeType.Line);
+        renderer.setColor(Color.WHITE);
+
+        renderer.rect(0f, 0f, scaleFactor, scaleFactor);
+
+        renderer.end();
+
+
 	}
+
+    private void switchToBiggerOuter(){
+
+        Vector2 left = outerTriangle.getPointLeft();
+        Vector2 right = outerTriangle.getPointRight();
+        Vector2 top = outerTriangle.getPointBottom();
+
+        Vector2 newLeft = left.cpy();
+        Vector2 diff = right.cpy().sub(left).scl(1.5f);
+        newLeft.sub(diff).sub(0f, top.y-left.y);
+
+        Vector2 newRight = right.cpy();
+        diff = left.cpy().sub(right).scl(1.5f);
+        newRight.sub(diff).sub(0f, top.y-left.y);
+
+        Vector2 newTop = top.cpy().add(0f, 2f*(top.y-left.y));
+
+        outerTriangle = new Triangle(newLeft, newRight, newTop);
+        calcBaseFromOuter();
+        calcOuterTriangleChildren();
+        calcTriangles(baseTriangle, MAX_DEPTH);
+
+        System.out.println("bigger new outerTriangle: " + outerTriangle);
+    }
+
+    private void switchToSmallerOuter(){
+        Triangle newOuter;
+        if(isRectangleInTriangle(0f, 0f, 1f, 1f, outerTriangleLeftChild)){
+            newOuter = outerTriangleLeftChild;
+        }
+        else if(isRectangleInTriangle(0f, 0f, 1f, 1f, outerTriangleRightChild)){
+            newOuter = outerTriangleRightChild;
+        }
+        else if(isRectangleInTriangle(0f, 0f, 1f, 1f, outerTriangleTopChild)){
+            newOuter = outerTriangleTopChild;
+        }
+        else{
+            System.out.println("ERROR in switchToSmallerOuter: No child of OuterTriangle fits");
+            return;
+        }
+
+        outerTriangle = newOuter;
+        calcBaseFromOuter();
+        calcOuterTriangleChildren();
+        calcTriangles(baseTriangle, MAX_DEPTH);
+
+        System.out.println("smaller new outerTriangle: " + outerTriangle);
+    }
+
+    private boolean isOuterTooBig(){
+        if(isRectangleInTriangle(0f, 0f, 1f, 1f, outerTriangleLeftChild) ||
+                isRectangleInTriangle(0f, 0f, 1f, 1f, outerTriangleRightChild) ||
+                isRectangleInTriangle(0f, 0f, 1f, 1f, outerTriangleTopChild)){
+            return true;
+        }
+        return false;
+    }
+
+    private boolean isOuterTooSmall(){
+        return !isRectangleInTriangle(0f, 0f, 1f, 1f, outerTriangle);
+    }
+
+    private boolean isRectangleInTriangle(float rectX, float rectY, float rectWidth, float rectHeight, Triangle triangle){
+
+        Vector2 left = triangle.getPointLeft();
+        Vector2 right = triangle.getPointRight();
+        Vector2 top = triangle.getPointBottom();
+
+        if(Intersector.isPointInTriangle(new Vector2(rectX, rectY), top, left, right) &&
+                Intersector.isPointInTriangle(new Vector2(rectX+rectWidth, rectY), top, left, right) &&
+                Intersector.isPointInTriangle(new Vector2(rectX, rectY+rectHeight), top, left, right) &&
+                Intersector.isPointInTriangle(new Vector2(rectX+rectWidth, rectY+rectHeight), top, left, right)){
+            return true;
+        }
+
+        return false;
+    }
+
+    private void calcOuterTriangleChildren(){
+        outerTriangleLeftChild = new Triangle(outerTriangle.getPointLeft(), baseTriangle.getPointBottom(),
+                baseTriangle.getPointLeft());
+        outerTriangleRightChild = new Triangle(baseTriangle.getPointBottom(), outerTriangle.getPointRight(),
+                baseTriangle.getPointRight());
+        outerTriangleTopChild = new Triangle(baseTriangle.getPointLeft(), baseTriangle.getPointRight(),
+                outerTriangle.getPointBottom());
+    }
+
+    private void calcBaseFromOuter(){
+        Vector2 left = outerTriangle.getPointLeft();
+        Vector2 right = outerTriangle.getPointRight();
+        Vector2 top = outerTriangle.getPointBottom();
+        baseTriangle = new Triangle(outerTriangle, left.cpy().add(top).scl(0.5f),
+                right.cpy().add(top).scl(0.5f), left.cpy().add(right).scl(0.5f));
+    }
 
     private void calcTriangles(Triangle t, int steps){
         if(steps == 0)
@@ -96,11 +263,14 @@ public class Triangles extends ApplicationAdapter {
 
     private void renderTriangles(Triangle t){
 
-        float red = 1f - outerTriangle.getPointLeft().dst(t.getPointCenter());
-        float green = 1f - outerTriangle.getPointRight().dst(t.getPointCenter());
-        float blue = 1f - outerTriangle.getPointBottom().dst(t.getPointCenter());
+        float maxDistance = outerTriangle.getPointLeft().dst(outerTriangle.getPointRight());
+
+        float red = 1f - outerTriangle.getPointLeft().dst(t.getPointCenter()) / maxDistance;
+        float green = 1f - outerTriangle.getPointRight().dst(t.getPointCenter()) / maxDistance;
+        float blue = 1f - outerTriangle.getPointBottom().dst(t.getPointCenter()) / maxDistance;
         Color c = new Color(red, green, blue, 1.0f);
         renderTriangle(t, c);
+//        renderTriangle(t, Color.RED);
 
         if(t.hasChildren()){
 //            renderTriangles(t.getTriangleLeft(), steps-1, COLOR_TRIANGLE_LEFT);
@@ -135,10 +305,15 @@ public class Triangles extends ApplicationAdapter {
         camera.viewportHeight = height;
 //        camera.viewportWidth = 1.0f;
 //        camera.viewportHeight = 1.0f;
-        camera.position.set(width/2.0f, height/2.0f, 0);
+//        camera.position.set(width/2.0f, height/2.0f, 0);
         camera.update();
         renderer.setProjectionMatrix(camera.combined);
 
         scaleFactor = Math.min(width, height);
+
+        //TODO: DEBUG only, remove later!
+        scaleFactor *= 0.25f;
+//        camera.position.set(0f, 0f, 0f);
+        camera.update();
     }
 }

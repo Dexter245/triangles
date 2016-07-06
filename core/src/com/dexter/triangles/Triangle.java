@@ -56,6 +56,24 @@ public class Triangle {
 
     }
 
+    public void move(float x, float y){
+        move(new Vector2(x, y));
+    }
+
+    public void move(Vector2 v){
+        pointLeft.add(v);
+        pointRight.add(v);
+        pointBottom.add(v);
+        pointCenter.add(v);
+    }
+
+    public void scale(float factor){
+        pointLeft.scl(factor);
+        pointRight.scl(factor);
+        pointBottom.scl(factor);
+        pointCenter.scl(factor);
+    }
+
     public boolean hasParent(){
         if(triangleParent != null)
             return true;
